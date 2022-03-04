@@ -2,7 +2,7 @@ version: "3"
 
 services:
     target_1:
-        image: "${IMAGE_TAG:?err}"
+        image: "${IMAGE_BASE_TAG:?err}"
         container_name: target_1
         hostname: target_1
         labels:
@@ -15,7 +15,7 @@ services:
             - ${VOLUME:?err}:/app
         command: ["node", "app.js", "target"]
     target_2:
-        image: "${IMAGE_TAG:?err}"
+        image: "${IMAGE_BASE_TAG:?err}"
         container_name: target_2
         hostname: target_2
         labels:
@@ -28,7 +28,7 @@ services:
             - ${VOLUME:?err}:/app
         command: ["node", "app.js", "target"]
     splitter:
-        image: "${IMAGE_TAG:?err}"
+        image: "${IMAGE_BASE_TAG:?err}"
         container_name: splitter
         hostname: splitter
         labels:

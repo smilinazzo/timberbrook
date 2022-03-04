@@ -6,14 +6,20 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_TAG: cribl/app-image
+  IMAGE_BASE_TAG: cribl/app-image
   NETWORK: timbernet
   WORKING_DIR: /app
   VOLUME: data
 
 jobs:
-  build:
+  integration-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [ 17, 16, 14 ]
+
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -25,70 +31,32 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          tags: ${{ env.IMAGE_TAG }}
+          build-args: node_version=${{ matrix.node }}
+          tags: ${{ env.IMAGE_BASE_TAG }}
           file: src/docker/app.Dockerfile
           load: true
-          outputs: type=docker,dest=/tmp/app_image.tar
-
-      - name: Upload Cribl/App-Image
-        uses: actions/upload-artifact@v2
-        with:
-          name: app_image
-          path: /tmp/app_image.tar
-          retention-days: 1
-  test:
-    strategy:
-      matrix:
-        python-version: [ 3.8 ]
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Download artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: app_image
-          path: /tmp
-
-      - name: Load Docker image
-        run: |
-          docker load --input /tmp/app_image.tar
-          docker image ls -a
-
-      - name: Checkout
-        uses: actions/checkout@v2
 
       - name: Install Requirements
         run: pip3 install -r requirements.txt
 
-      - name: Create Artifacts Dir
-        run: mkdir src/reports
+      - name: Create Versioned Artifacts Dir
+        run: mkdir src/reports/v${{ matrix.node}}
 
-      - name: Run Tests
-        id: pytest
-        run: python3 -m pytest
+      - name: Run Integration Tests
+        run: python3 -m pytest --artifacts=src/reports/v${{ matrix.node}} --junit-xml=src/reports/v${{ matrix.node }}-assignment-ci.xml
 
       - name: Upload Reports/Artifacts
         if: success() || failure()
         uses: actions/upload-artifact@v2
         with:
           name: artifacts
-          path: src/reports/*
+          path: src/reports/*.tar.gz
 
       - name: Test Report
         uses: dorny/test-reporter@v1
         if: success() || failure()
         with:
-          name: JUnit Tests
-          path: src/reports/assignment-ci.xml
+          name: JUnit Tests (${{ matrix.node }})
+          path: src/reports/*.xml
           reporter: java-junit
           fail-on-error: 'false'
-#  clean:
-#    runs-on: ubuntu-latest
-#    if: ${{ always() }}
-#    needs: [ build, test ]
-#    steps:
-#      - name: Remove Images
-#        uses:
