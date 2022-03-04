@@ -1,0 +1,12 @@
+{
+    "tcp" : [
+        {
+            "host" : "target_1",
+            "port" : 9997
+        },
+        {
+            "host" : "target_2",
+            "port" : 9997
+        }
+    ]
+}

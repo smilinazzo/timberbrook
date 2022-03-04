@@ -1,0 +1,146 @@
+"use strict";
+exports.__esModule = true;
+var fs = require('fs');
+var net = require('net');
+function agent(agent_dir) {
+    console.log("Working as agent");
+    var monitored_filename;
+    var hostport;
+    // const agent_dir = "agent/";
+    fs.promises.readFile(agent_dir + "/outputs.json")
+        .then(function (data) {
+        var json = JSON.parse(data);
+        hostport = json.tcp;
+        console.log("tcp=", hostport);
+        return fs.promises.readFile(agent_dir + "/inputs.json");
+    })
+        .then(function (data) {
+        var json = JSON.parse(data);
+        monitored_filename = agent_dir + "/" + json.monitor;
+        console.log("monitored_filename=", monitored_filename);
+        console.log("Connecting to ", hostport);
+        var clientSocket = net.createConnection({ host: hostport.host, port: hostport.port }, function () {
+            console.log("connected to target", hostport);
+            var rs = fs.createReadStream(monitored_filename);
+            rs.pipe(clientSocket);
+        });
+    })["catch"](function (error) {
+        console.log(error);
+    });
+}
+function writeToSocket(data, remoteSocket, localSocket) {
+    var flushed = remoteSocket.write(data);
+    if (!flushed) {
+        // We could not write to one of the targets
+        localSocket.pause();
+    }
+}
+function splitter(conf_directory) {
+    console.log("working as splitter");
+    var data = fs.readFileSync(conf_directory + "/outputs.json");
+    var json = JSON.parse(data);
+    var targets = json.tcp;
+    console.log("targets", targets);
+    var sockIdx = 0;
+    var data = fs.readFileSync(conf_directory + "/inputs.json");
+    var json = JSON.parse(data);
+    var port = json.tcp;
+    var server = net.createServer(function (localSocket) {
+        console.log("client connected");
+        var outSocks = [];
+        targets.forEach(function (target) {
+            console.log('processing ', target);
+            var sock = net.createConnection(target, function () {
+                console.log("Connected to ", target);
+            });
+            sock.on('end', function () {
+                console.error('Disconnected', target);
+            });
+            outSocks.push(sock);
+            sock.on('drain', function () {
+                localSocket.resume();
+            });
+        });
+        localSocket.on('data', function (data) {
+            // find new line if it exists. 
+            //      Send 1st part to current socket (sockIdx)
+            //      Send 2nd part to next socket(socket2). Make socket2 the current socket
+            // If no new line exists, send to the current socket
+            var idx = data.indexOf("\n");
+            var part_1 = "";
+            var part_2 = "";
+            if (idx == -1) {
+                part_1 = data;
+                writeToSocket(part_1, outSocks[sockIdx], localSocket);
+            }
+            else {
+                part_1 = data.slice(0, idx + 1); /* include the line termination */
+                part_2 = data.slice(idx + 1);
+                writeToSocket(part_1, outSocks[sockIdx], localSocket);
+                sockIdx++;
+                sockIdx %= outSocks.length;
+                writeToSocket(part_2, outSocks[sockIdx], localSocket);
+            }
+        });
+    });
+    server.listen(port, function () {
+        console.log("App listening on port", port);
+    });
+}
+function target(conf_directory) {
+    console.log("working as target");
+    var data = fs.readFileSync(conf_directory + "/outputs.json");
+    var json = JSON.parse(data);
+    var outputfile = json.file;
+    console.log("outputfile", outputfile);
+    var data = fs.readFileSync(conf_directory + "/inputs.json");
+    var json = JSON.parse(data);
+    var port = json.tcp;
+    var server = net.createServer(function (localSocket) {
+        console.log("client connected");
+        localSocket.on('data', function (data) {
+            fs.appendFile(outputfile, data, function () {
+                // written to file
+                // console.debug("Written to file");
+            });
+        });
+    });
+    server.listen(port, function () {
+        console.log("App listening on port", port);
+    });
+}
+// For debugging
+var os = require('os');
+console.log("My hostname is: " + os.hostname());
+if (process.argv.length != 3) {
+    console.error("Usage: " + process.argv0 + " " + process.argv[1] + " <config_dir>");
+    process.exit(1);
+}
+var conf_directory = process.argv[2];
+if (!fs.existsSync(conf_directory)) {
+    console.error("Make sure directory '" + conf_directory + "' exists");
+    process.exit(1);
+}
+try {
+    var data = fs.readFileSync(conf_directory + "/app.json");
+    var json = JSON.parse(data);
+    switch (json.mode) {
+        case 'agent':
+            agent(conf_directory);
+            break;
+        case 'splitter':
+            splitter(conf_directory);
+            break;
+        case 'target':
+            target(conf_directory);
+            break;
+        default:
+            console.log("Usage: ", process.argv[0], process.argv[1], "agent|splitter|target");
+            console.warn("Cannot understand app argument", process.argv);
+            process.exit(1);
+    }
+}
+catch (err) {
+    console.log("Usage: ", process.argv[0], process.argv[1], "agent|splitter|target");
+    console.error("Encountered error", err);
+}
