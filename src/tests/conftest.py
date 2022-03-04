@@ -3,6 +3,7 @@ import json
 import types
 import pytest
 import tarfile
+import logging
 
 from pathlib import Path
 from datetime import datetime
@@ -14,6 +15,14 @@ from docker.models.networks import Network
 from _pytest.config import Config
 from src.tools.enums import ServiceType
 from typing import Callable, Generator, Union, Optional, List
+
+
+_logger = logging.getLogger(__name__)
+
+
+@pytest.fixture(name = 'log', autouse = True)
+def fixture_log(request):
+    _logger.info(f'====== Running: {request.node.name} ======')
 
 
 @pytest.fixture(name = 'client', scope = 'session')
@@ -96,6 +105,7 @@ def fixture_rx_events(pytestconfig: Config, working_dir: str) -> Path:
     path = Path(pytestconfig.rootpath, 'src', 'app', ServiceType.TARGET.value, 'outputs.json')
     with path.open() as file:
         inputs = json.load(file)
+        _logger.info(f'Loaded {file.name}...')
 
     yield Path(working_dir, inputs.get('file'))
 
@@ -110,6 +120,7 @@ def fixture_tx_events(pytestconfig: Config) -> Path:
     path = Path(pytestconfig.rootpath, 'src', 'app', ServiceType.AGENT.value)
     with Path(path, 'inputs.json').open() as file:
         inputs = json.load(file)
+        _logger.info(f'Loaded {file.name}...')
 
     yield Path(path, inputs.get('monitor'))
 
@@ -138,6 +149,7 @@ def fixture_targz(reports: Path, artifacts_dir: Path) -> None:
 
     with tarfile.open(name = str(Path(reports, f'{artifacts_dir.name}.tar.gz')), mode = 'w|gz') as tar:
         tar.add(str(artifacts_dir), artifacts_dir.name)
+        _logger.info(f'Add {artifacts_dir.name} to {tar.name}')
 
 
 @pytest.fixture(name = 'write_to_artifacts', scope = 'session')
@@ -168,6 +180,7 @@ def fixture_write_to_artifacts(artifacts_dir: Path) -> Callable:
                     file.write(chunk)
             else:
                 raise AssertionError(f'Writing {type(data)} to a file is not implemented')
+            _logger.info(f'Created {name} at {path}')
 
         return Path(file.name)
 
@@ -194,13 +207,17 @@ def fixture_run_agent(client: DockerClient, image: Callable, network: Callable, 
         :param _client: The DockerClient
         :return:        Generator
         """
-        return _client.containers.run(
-            image    = image().short_id,
-            command  = ['node', 'app.js', ServiceType.AGENT.value],
-            network  = network().name,
-            volumes  = [f'{volume().name}:/app:rw'],
+        params = dict(
+            image = image().short_id,
+            command = ['node', 'app.js', ServiceType.AGENT.value],
+            network = network().name,
+            volumes = [f'{volume().name}:/app:rw'],
             remove = True
         )
+
+        _logger.info('Running Agent Container...')
+        _logger.info(f'\n{json.dumps(params, indent = 4, sort_keys = True)}')
+        return _client.containers.run(**params)
 
     yield partial(_func, client)
 
