@@ -1,5 +1,6 @@
 import pytest
 import tarfile
+import logging
 
 from pathlib import Path
 from typing import Callable
@@ -7,6 +8,9 @@ from docker import DockerClient
 from itertools import permutations
 from src.tools.enums import ServiceType
 from src.tools.utils import file_cmp
+
+
+_logger = logging.getLogger(__name__)
 
 
 class TestApp:
@@ -118,7 +122,8 @@ class TestApp:
         :param dst:     The Destination container hostname
         :return:
         """
-        response = client.containers.get(src).exec_run(f'ping -c 5 {dst}')
+        response = client.containers.get(src).exec_run(f'ping -c 5 -i .2 {dst}')
+        _logger.info(f'{src} -> {dst}:\n{response.output.decode()}')
         assert response.exit_code == 0, f'Failed to reach {dst} from {src}'
 
     @staticmethod
@@ -136,11 +141,16 @@ class TestApp:
         :param target:  The hostname of the Target container
         :return:
         """
-        target = client.containers.get(target)
-        for log in target.logs().decode().split('\n'):
+        container = client.containers.get(target)
+
+        # TODO: Could be going through a TON of logs. Should use fixture and 'since' option
+        _logger.info(f"Looking for 'client connected' in {target} logs...")
+        for log in container.logs().decode().split('\n'):
             if 'client connected' in log:
+                _logger.info('  ...entry found.')
                 break
         else:
+            _logger.info('   ..entry not found')
             raise AssertionError(f'Unable to determine if the client connected to {target}')
 
     @staticmethod
@@ -159,6 +169,7 @@ class TestApp:
         :return:
         """
         # Basic check for existence
+        _logger.info(f'Searching for {rx_events} file...')
         result = client.containers.get(target).exec_run(f'test -f {rx_events.name}')
         assert result.exit_code == 0, f'The {rx_events.name} log was not found on {target}.'
 
@@ -181,6 +192,7 @@ class TestApp:
         logs = []
         for target in targets:
             # Grab the events.log from each Target
+            _logger.info(f'Get Archive {rx_events.name} from {target.name}')
             stream, stats = client.api.get_archive(target.name, rx_events, encode_stream = True)
             log_name = f'{target.name}_events.tar'
             logs.append(
@@ -196,4 +208,5 @@ class TestApp:
             request.addfinalizer(file.close)
 
         partials = [file.extractfile(rx_events.name) for file in files]
+        _logger.info(f'Determine if aggregate events in {rx_events.name} match {tx_events.name}')
         file_cmp(tx_events, *partials)
