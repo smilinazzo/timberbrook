@@ -1,0 +1,5 @@
+pytest>=7.0.1
+docker>=5.0.3
+docker-compose>=1.29.2
+websocket-client<1,>=0.32.0
+pytest-docker-compose>=1.0.1
