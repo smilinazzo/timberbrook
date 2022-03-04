@@ -1,0 +1,51 @@
+version: "3"
+
+services:
+    target_1:
+        image: "${IMAGE_TAG:?err}"
+        container_name: target_1
+        hostname: target_1
+        labels:
+            operation-mode: "target"
+        ports:
+            - "9997/tcp"
+        networks:
+            - "${NETWORK:?err}"
+        volumes:
+            - ${VOLUME:?err}:/app
+        command: ["node", "app.js", "target"]
+    target_2:
+        image: "${IMAGE_TAG:?err}"
+        container_name: target_2
+        hostname: target_2
+        labels:
+            operation-mode: "target"
+        ports:
+            - "9997/tcp"
+        networks:
+            - "${NETWORK:?err}"
+        volumes:
+            - ${VOLUME:?err}:/app
+        command: ["node", "app.js", "target"]
+    splitter:
+        image: "${IMAGE_TAG:?err}"
+        container_name: splitter
+        hostname: splitter
+        labels:
+            operation-mode: "splitter"
+        ports:
+            - "9997/tcp"
+        networks:
+            - "${NETWORK:?err}"
+        command: ["node", "app.js", "splitter"]
+        depends_on:
+            - target_1
+            - target_2
+
+networks:
+    timbernet:
+        name: "${NETWORK:?err}"
+
+volumes:
+    data:
+        name: "${VOLUME:?err}"
