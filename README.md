@@ -115,7 +115,9 @@ Container logs, the Target's events.log file, and test logs are stored in the `s
 > pip3 install -r requirements.txt
 
 5. Run the tests
-> python3 -m pytest
+> python3 -m pytest --image_tag=cribl/app-image
+or
+> pytest --image_tag=cribl/app-image
 
 ### Artifacts
 Console logs, Container logs, and output files are saved to `src/reports`
