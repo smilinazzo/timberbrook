@@ -45,6 +45,7 @@ class TestApp:
 
         :return:
         """
+        _logger.info(f'App is UP and Running...')
         yield
         for container in class_scoped_container_getter.docker_project.containers():
             write_to_artifacts(
