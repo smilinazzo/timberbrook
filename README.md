@@ -116,6 +116,7 @@ Container logs, the Target's events.log file, and test logs are stored in the `s
 
 5. Run the tests
 > python3 -m pytest --image_tag=cribl/app-image
+
 or
 > pytest --image_tag=cribl/app-image
 
