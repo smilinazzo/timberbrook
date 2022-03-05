@@ -12,9 +12,9 @@ from docker import DockerClient
 from docker.models.images import Image
 from docker.models.volumes import Volume
 from docker.models.networks import Network
+from typing import Callable, Generator, Union, Optional, List
 from _pytest.config import Config
 from src.tools.enums import ServiceType
-from typing import Callable, Generator, Union, Optional, List
 
 
 _logger = logging.getLogger(__name__)
@@ -33,6 +33,39 @@ def fixture_client() -> DockerClient:
     :return:    DockerClient
     """
     yield DockerClient()
+
+
+@pytest.fixture(name = 'build', scope = 'session', autouse = True)
+def fixture_build(pytestconfig, client: DockerClient) -> None:
+    """
+    Build the app image if we aren't in a CI
+
+    :param pytestconfig:
+    :param client:
+    :return:
+    """
+    image_tag = pytestconfig.getoption("image_tag")
+    if os.getenv('CI') is None:
+        _logger.info(f'No CI detected. Building {image_tag}...')
+        image, logs = client.images.build(
+            path = '.',
+            dockerfile = Path(pytestconfig.rootpath, 'src', 'docker', 'app.Dockerfile'),
+            tag = image_tag,
+            nocache = True,
+            rm = True,
+            buildargs = {
+                'node_version': pytestconfig.getoption('node_version')
+            }
+        )
+        for log in logs:
+            if stream := log.get('stream'):
+                _logger.info(stream)
+    yield
+
+    _logger.info(f'Removing image {image_tag}')
+    client.images.remove(
+        image = pytestconfig.getoption("image_tag")
+    )
 
 
 @pytest.fixture(name = 'network', scope = 'session')
@@ -75,7 +108,7 @@ def fixture_volume(client: DockerClient) -> Callable:
 
 
 @pytest.fixture(name = 'working_dir', scope = 'session')
-def fixture_working_dir() -> str:
+def fixture_working_dir(pytestconfig) -> str:
     """
     Yield the name of the Image Working Directory
 
@@ -147,9 +180,10 @@ def fixture_targz(reports: Path, artifacts_dir: Path) -> None:
     """
     yield
 
-    with tarfile.open(name = str(Path(reports, f'{artifacts_dir.name}.tar.gz')), mode = 'w|gz') as tar:
-        tar.add(str(artifacts_dir), artifacts_dir.name)
-        _logger.info(f'Add {artifacts_dir.name} to {tar.name}')
+    if os.getenv('CI'):
+        with tarfile.open(name = str(Path(reports, f'{artifacts_dir.name}.tar.gz')), mode = 'w|gz') as tar:
+            tar.add(str(artifacts_dir), artifacts_dir.name)
+            _logger.info(f'Add {artifacts_dir.name} to {tar.name}')
 
 
 @pytest.fixture(name = 'write_to_artifacts', scope = 'session')
