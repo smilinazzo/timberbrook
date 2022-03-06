@@ -194,15 +194,18 @@ class TestApp:
         for target in targets:
             # Grab the events.log from each Target
             _logger.info(f'Get Archive {rx_events.name} from {target.name}')
-            stream, stats = client.api.get_archive(target.name, rx_events, encode_stream = True)
-            log_name = f'{target.name}_events.tar'
-            logs.append(
-                write_to_artifacts(
-                    name = log_name,
-                    data = stream,
-                    extra_path = self.__class__.__name__
+
+            result = target.exec_run(f'test -f {rx_events.name}')
+            if result.exit_code == 0:
+                stream, stats = client.api.get_archive(target.name, rx_events, encode_stream = True)
+                log_name = f'{target.name}_events.tar'
+                logs.append(
+                    write_to_artifacts(
+                        name = log_name,
+                        data = stream,
+                        extra_path = self.__class__.__name__
+                    )
                 )
-            )
 
         files = [tarfile.open(log, mode = 'r') for log in logs]
         for file in files:

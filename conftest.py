@@ -34,8 +34,6 @@ def pytest_configure(config):
         os.environ['IMAGE_BASE_TAG'] = image
     if os.getenv('NETWORK') is None:
         os.environ['NETWORK'] = 'timbernet'
-    if os.getenv('VOLUME') is None:
-        os.environ['VOLUME'] = 'data'
     if os.getenv('WORKING_DIR') is None:
         os.environ['WORKING_DIR'] = '/app'
 

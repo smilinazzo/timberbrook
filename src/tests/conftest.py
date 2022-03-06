@@ -94,19 +94,6 @@ def fixture_image(client: DockerClient) -> Callable:
     yield _func
 
 
-@pytest.fixture(name = 'volume', scope = 'session')
-def fixture_volume(client: DockerClient) -> Callable:
-    """
-    Yield a callable to get the :py:class:`Volume` for the containers
-
-    :return:
-    """
-    def _func() -> Volume:
-        return client.volumes.get(os.getenv('VOLUME'))
-
-    yield _func
-
-
 @pytest.fixture(name = 'working_dir', scope = 'session')
 def fixture_working_dir(pytestconfig) -> str:
     """
@@ -222,7 +209,7 @@ def fixture_write_to_artifacts(artifacts_dir: Path) -> Callable:
 
 
 @pytest.fixture(name = 'run_agent_cmd', scope = 'session')
-def fixture_run_agent(client: DockerClient, image: Callable, network: Callable, volume: Callable) -> Callable:
+def fixture_run_agent(client: DockerClient, image: Callable, network: Callable) -> Callable:
     """
     Yield a :py:class:`Callable`.
 
@@ -231,7 +218,6 @@ def fixture_run_agent(client: DockerClient, image: Callable, network: Callable, 
     :param client:      The DockerClient
     :param image:       The Image instance
     :param network:     The Network instance
-    :param volume:      The Volume instance
     :return:            Callable
     """
     def _func(_client: DockerClient) -> List[str]:
@@ -245,7 +231,6 @@ def fixture_run_agent(client: DockerClient, image: Callable, network: Callable, 
             image = image().short_id,
             command = ['node', 'app.js', ServiceType.AGENT.value],
             network = network().name,
-            volumes = [f'{volume().name}:/app:rw'],
             remove = True
         )
 
