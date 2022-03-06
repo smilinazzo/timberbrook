@@ -9,8 +9,6 @@ services:
             operation-mode: "target"
         expose:
             - "9997/tcp"
-        volumes:
-            - target_1:/app
         networks:
             - "${NETWORK:?err}"
         command: ["node", "app.js", "target"]
@@ -22,8 +20,6 @@ services:
             operation-mode: "target"
         expose:
             - "9997/tcp"
-        volumes:
-            - target_2:/app
         networks:
             - "${NETWORK:?err}"
         command: ["node", "app.js", "target"]
@@ -34,7 +30,7 @@ services:
         labels:
             operation-mode: "splitter"
         expose:
-            - "9997/tcp"
+            - "9998/tcp"
         networks:
             - "${NETWORK:?err}"
         command: ["node", "app.js", "splitter"]
@@ -45,7 +41,3 @@ services:
 networks:
     timbernet:
         name: "${NETWORK:?err}"
-
-volumes:
-    target_1:
-    target_2:

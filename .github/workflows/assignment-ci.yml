@@ -17,14 +17,11 @@ jobs:
       matrix:
         node: [ 17 ]
 
-    runs-on: self-hosted
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
 
       - name: Build App Image
         uses: docker/build-push-action@v2
@@ -33,7 +30,6 @@ jobs:
           build-args: node_version=${{ matrix.node }}
           tags: ${{ env.IMAGE_BASE_TAG }}
           file: src/docker/app.Dockerfile
-          load: true
 
       - name: Install Requirements
         run: pip3 install -r requirements.txt
