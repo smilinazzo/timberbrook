@@ -4,9 +4,6 @@ ARG node_version=current
 # lock to some version that is stored in our local docker registry.
 FROM node:$node_version-alpine3.15
 
-# Expose the port we are using
-EXPOSE 9997/tcp
-
 # Set the Working Directory
 WORKDIR /app
 

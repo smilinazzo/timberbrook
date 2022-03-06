@@ -9,7 +9,6 @@ env:
   IMAGE_BASE_TAG: cribl/app-image
   NETWORK: timbernet
   WORKING_DIR: /app
-  VOLUME: data
 
 jobs:
   integration-tests:

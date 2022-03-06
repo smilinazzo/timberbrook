@@ -7,12 +7,12 @@ services:
         hostname: target_1
         labels:
             operation-mode: "target"
-        ports:
+        expose:
             - "9997/tcp"
+        volumes:
+            - target_1:/app
         networks:
             - "${NETWORK:?err}"
-        volumes:
-            - ${VOLUME:?err}:/app
         command: ["node", "app.js", "target"]
     target_2:
         image: "${IMAGE_BASE_TAG:?err}"
@@ -20,12 +20,12 @@ services:
         hostname: target_2
         labels:
             operation-mode: "target"
-        ports:
+        expose:
             - "9997/tcp"
+        volumes:
+            - target_2:/app
         networks:
             - "${NETWORK:?err}"
-        volumes:
-            - ${VOLUME:?err}:/app
         command: ["node", "app.js", "target"]
     splitter:
         image: "${IMAGE_BASE_TAG:?err}"
@@ -33,7 +33,7 @@ services:
         hostname: splitter
         labels:
             operation-mode: "splitter"
-        ports:
+        expose:
             - "9997/tcp"
         networks:
             - "${NETWORK:?err}"
@@ -47,5 +47,5 @@ networks:
         name: "${NETWORK:?err}"
 
 volumes:
-    data:
-        name: "${VOLUME:?err}"
+    target_1:
+    target_2:
