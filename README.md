@@ -99,6 +99,7 @@ I can't get *Test 7* to pass on the Git Hosted runner (self-hosted passes). Ther
 * On the GitHub Ubuntu, the events are written, but I will see overlap and out-of-order entries. For example:
 
 The test will fail with an error like this:
+
     E   AssertionError: The event: [This is event number 78085]
     E   was not found in: ['target_1_events.tar', 'target_2_events.tar']
     E     Last:
