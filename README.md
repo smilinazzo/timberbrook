@@ -92,6 +92,33 @@ Container logs, the Target's events.log file, and test logs are stored in the `s
 >       * **Note**: It is assumed for this that the events are recorded in order so the events.log files are sorted.
 >  * Pass Criteria:
 >      * The result search is None
+ 
+**Point of Note**:
+I can't get *Test 7* to pass on the Git Hosted runner (self-hosted passes). There seems to be some corruption or issue with writing the events.log. 
+* On the Self-Hosted runner, all of the events are written in consistent chunks/order and the test passes. 
+* On the GitHub Ubuntu, the events are written, but I will see overlap and out-of-order entries. For example:
+
+The test will fail with an error like this:
+    E   AssertionError: The event: [This is event number 78085]
+    E   was not found in: ['target_1_events.tar', 'target_2_events.tar']
+    E     Last:
+    E       0: event number 82940    
+    E       1: This is event number 80512
+ 
+Meaning we were looking for event 78085, but the line in the both file didn't match as they were already at event 8XXXX (as well as the line in the first file being incomplete).
+
+That entry actually appears in target_1 events.log. But here:
+
+    This is event number 85364
+    This is event number 85365
+    This is event number 85366
+    This is event This is event number 78085
+    This is event number 78086
+    This is event number 78087
+    This is event number 78088
+
+So, the data chunk that was supposed to be written before the 8XXXX chunk is actually written after. I haven't been able to explain this failure and it's keeping me up at nights.
+
 
 ## Deployment
 
