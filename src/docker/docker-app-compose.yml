@@ -30,7 +30,7 @@ services:
         labels:
             operation-mode: "splitter"
         expose:
-            - "9998/tcp"
+            - "9997/tcp"
         networks:
             - "${NETWORK:?err}"
         command: ["node", "app.js", "splitter"]
