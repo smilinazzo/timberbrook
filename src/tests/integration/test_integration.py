@@ -31,7 +31,7 @@ class TestApp:
             - Store the Agent logs to the artifact directory
             - Store the Splitter and Target Logs to the artifacts directory
     """
-    @pytest.fixture(name = 'start', scope = 'class')
+    @pytest.fixture(name = 'start', scope = 'class', autouse = True)
     def fixture_start(self, class_scoped_container_getter, write_to_artifacts: Callable) -> None:
         """
         Start the Splitter/Target containers as defined in the docker-compose yaml.
@@ -54,7 +54,7 @@ class TestApp:
                 extra_path = self.__class__.__name__
             )
 
-    @pytest.fixture(name = 'run', scope = 'class', autouse = True)
+    @pytest.fixture(name = 'run', scope = 'class')
     def fixture_run(self, start, client: DockerClient, run_agent_cmd: Callable, write_to_artifacts: Callable) -> None:
         """
         Uses the ``run_agent_cmd`` fixture to run the Agent container.
@@ -134,6 +134,7 @@ class TestApp:
             'target_1', 'target_2'
         ]
     )
+    @pytest.mark.usefixtures('run')
     def test_agent_connection_registered_at_target(client: DockerClient, target: str):
         """
         Verify the Target container logged the client connection
@@ -161,6 +162,7 @@ class TestApp:
             'target_1', 'target_2'
         ]
     )
+    @pytest.mark.usefixtures('run')
     def test_target_events_log_created(client: DockerClient, target: str, rx_events: Path):
         """
         Verify the Target container logged the client events
@@ -174,6 +176,7 @@ class TestApp:
         result = client.containers.get(target).exec_run(f'test -f {rx_events.name}')
         assert result.exit_code == 0, f'The {rx_events.name} log was not found on {target}.'
 
+    @pytest.mark.usefixtures('run')
     def test_events_stored_and_correct_at_targets(self, request, client: DockerClient, write_to_artifacts: Callable,
                                                   rx_events: Path, tx_events: Path):
         """
@@ -194,7 +197,6 @@ class TestApp:
         for target in targets:
             # Grab the events.log from each Target
             _logger.info(f'Get Archive {rx_events.name} from {target.name}')
-
             result = target.exec_run(f'test -f {rx_events.name}')
             if result.exit_code == 0:
                 stream, stats = client.api.get_archive(target.name, rx_events, encode_stream = True)
