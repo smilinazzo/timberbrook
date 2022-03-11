@@ -1,7 +1,50 @@
 import json
+import logging
 
 from pathlib import Path
 from typing import IO, Union
+from prettytable import PrettyTable
+
+_logger = logging.getLogger(__name__)
+
+
+def event_check(master: Union[str, Path], *files: IO[bytes]) -> None:
+    results = {'valid': 0, 'duplicate': 0, 'missing': 0, 'invalid': 0}
+    table = PrettyTable(field_names = results.keys())
+
+    _logger.info('Start Master Event search...')
+    with open(master, mode = 'rb') as source:
+        # Read in all master events
+        master_events = {
+            event: 0 for event in source.readlines()
+        }
+        invalid = 0
+
+        while any(events := [file.readline() for file in files]):
+            # While there is an event record remaining in a target file, record the result
+            for event in events:
+                if event:
+                    status = master_events.get(event)
+                    if status is None:
+                        # Event was not found
+                        invalid += 1
+                    else:
+                        master_events[event] += 1
+
+    # Compile results
+    results['invalid'] = invalid
+    for value in master_events.values():
+        if value == 0:
+            results['missing'] += 1
+        elif value == 1:
+            results['valid'] += 1
+        else:
+            results['duplicate'] += 1
+
+    table.add_row(results.values())
+    _logger.info(f'\n{table}')
+
+    assert results['duplicate'] == results['missing'] == invalid == 0, f'Event errors found:\n{table}'
 
 
 def file_cmp(master: Union[str, Path], *files: IO[bytes]) -> None:

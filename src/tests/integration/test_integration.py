@@ -7,7 +7,7 @@ from typing import Callable
 from docker import DockerClient
 from itertools import permutations
 from src.tools.enums import ServiceType
-from src.tools.utils import file_cmp
+from src.tools.utils import event_check
 
 
 _logger = logging.getLogger(__name__)
@@ -215,4 +215,4 @@ class TestApp:
 
         partials = [file.extractfile(rx_events.name) for file in files]
         _logger.info(f'Determine if aggregate events in {rx_events.name} match {tx_events.name}')
-        file_cmp(tx_events, *partials)
+        event_check(tx_events, *partials)
